@@ -52,9 +52,7 @@ class CostFunction:
 
        
 class MPC:
-    def __init__(self, x0, x_ref_list, rect_list):
-        T = 5.0
-        N = 20
+    def __init__(self,T, N, x0, x_ref_list, rect_list):
         dt = T / N
         nx = 4
         nu = 2
@@ -101,7 +99,7 @@ class MPC:
 
                 A, b = rect.get(Xk)
 
-                g+=[A[0, 0]*beta[0]+A[1,0]+beta[1]+A[2,0]*beta[2]+A[3,0]*beta[3], A[0, 1]*beta[0]+A[1,1]+beta[1]+A[2,1]*beta[2]+A[3,1]*beta[3]]
+                g+=[A[0, 0]*beta[0]+A[1,0]*beta[1]+A[2,0]*beta[2]+A[3,0]*beta[3], A[0, 1]*beta[0]+A[1,1]*beta[1]+A[2,1]*beta[2]+A[3,1]*beta[3]]
                 lbg += [0, 0]
                 ubg += [0, 0]
                 lam_g0 += [0, 0]
@@ -164,24 +162,15 @@ class Rect:
         W = self.W
         H = self.H
         A = np.array([[s, -c], [-s, c], [c, s], [-c, -s]])
-        print("A", A)
-        print("s", s)
         b = np.array([W/2+s*x-c*y, W/2-s*x+c*y, H/2+c*x+s*y, H/2-c*x-s*y]) 
-        print("b", b)
         return A, b
 
     def get(self, xk):
         xk_x = xk[0]
         xk_y = xk[1]
-        xk_th = xk[2]
-        dx = xk_x - self.x
-        dy = xk_y - self.y
-        dth = xk_th - self.th
-        c = np.cos(self.th)
-        s = np.sin(self.th)
-        x = dx*c + dy*s
-        y = -dx*s + dy*c
-        return self.calcAb(x, y, 0)
+        x = xk_x - self.x
+        y = xk_y - self.y
+        return self.calcAb(-x, -y, self.th)
 
     def getRectXY(self):
         c = np.cos(self.th)
@@ -201,8 +190,8 @@ class Rect:
         
 
 def main():
-    T = 5
-    N = 20
+    T = 15
+    N = 60
     x0 = [0, 1, 0, 0]
     t = [i*T/N for i in range(N)]
     v = 1
@@ -211,9 +200,10 @@ def main():
     y_ref = [ref[1] for ref in x_ref_list]
 
 
-    rect_list = [Rect(1, 0, 0.7, 0.5, 0.5)]
+    # rect_list = [Rect(1, 0, 0.7, 0.5, 1), Rect(4, 0, 0., 0.5, 0.5), Rect(6, 1.5, 0.0, 0.5, 0.5), Rect(9, 0, 0., 0.7, 0.5)]
+    rect_list = [Rect(1, 0, 0.7, 0.5, 1)]
 
-    mpc = MPC(x0, x_ref_list, rect_list)
+    mpc = MPC(T, N, x0, x_ref_list, rect_list)
     start = time.time()
     sol = mpc.solve()
     end = time.time()
@@ -221,8 +211,8 @@ def main():
     x = sol['x']
     print(x.shape)
 
-    pos_x = x[0::10]
-    pos_y = x[1::10]
+    pos_x = x[0::6+4*len(rect_list)]
+    pos_y = x[1::6+4*len(rect_list)]
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
